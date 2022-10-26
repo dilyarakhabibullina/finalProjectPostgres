@@ -1,0 +1,68 @@
+EXPLAIN ANALYZE
+SELECT free_throws, faults FROM results LEFT JOIN players ON players.id=results.player_id
+WHERE first_name ='Yasir' AND last_name = 'Thornton';
+
+
+"QUERY PLAN"
+"Seq Scan on results  (cost=13.50..19.25 rows=2 width=8) (actual time=0.149..0.153 rows=1 loops=1)"
+"  Filter: (player_id = $0)"
+"  Rows Removed by Filter: 297"
+"  InitPlan 1 (returns $0)"
+"    ->  Seq Scan on players  (cost=0.00..13.50 rows=1 width=4) (actual time=0.068..0.084 rows=1 loops=1)"
+"          Filter: (((first_name)::text = 'Yasir'::text) AND ((last_name)::text = 'Thornton'::text))"
+"          Rows Removed by Filter: 299"
+"Planning Time: 0.247 ms"
+"Execution Time: 0.392 ms"
+
+
+
+После создания индекса на поле results.player_id
+
+EXPLAIN ANALYZE
+SELECT free_throws, faults FROM results LEFT JOIN players ON players.id=results.player_id
+WHERE first_name ='Yasir' AND last_name = 'Thornton';
+
+
+"Hash Join  (cost=13.51..19.31 rows=1 width=8) (actual time=0.200..0.209 rows=1 loops=1)"
+"  Hash Cond: (results.player_id = players.id)"
+"  ->  Seq Scan on results  (cost=0.00..5.00 rows=300 width=12) (actual time=0.023..0.050 rows=298 loops=1)"
+"  ->  Hash  (cost=13.50..13.50 rows=1 width=4) (actual time=0.108..0.108 rows=1 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 9kB"
+"        ->  Seq Scan on players  (cost=0.00..13.50 rows=1 width=4) (actual time=0.075..0.092 rows=1 loops=1)"
+"              Filter: (((first_name)::text = 'Yasir'::text) AND ((last_name)::text = 'Thornton'::text))"
+"              Rows Removed by Filter: 299"
+"Planning Time: 0.374 ms"
+"Execution Time: 0.343 ms"
+
+
+После создания индекса на поле players.last_name
+
+"QUERY PLAN"
+"Hash Join  (cost=9.38..15.15 rows=1 width=8) (actual time=0.712..0.721 rows=1 loops=1)"
+"  Hash Cond: (results.player_id = players.id)"
+"  ->  Seq Scan on results  (cost=0.00..4.98 rows=298 width=12) (actual time=0.030..0.057 rows=298 loops=1)"
+"  ->  Hash  (cost=9.36..9.36 rows=1 width=4) (actual time=0.376..0.377 rows=1 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 9kB"
+"        ->  Bitmap Heap Scan on players  (cost=4.16..9.36 rows=1 width=4) (actual time=0.371..0.371 rows=1 loops=1)"
+"              Recheck Cond: ((last_name)::text = 'Thornton'::text)"
+"              Filter: ((first_name)::text = 'Yasir'::text)"
+"              Rows Removed by Filter: 1"
+"              Heap Blocks: exact=2"
+"              ->  Bitmap Index Scan on last_name  (cost=0.00..4.16 rows=2 width=0) (actual time=0.359..0.359 rows=2 loops=1)"
+"                    Index Cond: ((last_name)::text = 'Thornton'::text)"
+"Planning Time: 10.423 ms"
+"Execution Time: 0.815 ms"
+
+
+После создания индекса на поле players.first_name
+
+"Hash Join  (cost=8.18..13.95 rows=1 width=8) (actual time=0.216..0.225 rows=1 loops=1)"
+"  Hash Cond: (results.player_id = players.id)"
+"  ->  Seq Scan on results  (cost=0.00..4.98 rows=298 width=12) (actual time=0.029..0.056 rows=298 loops=1)"
+"  ->  Hash  (cost=8.17..8.17 rows=1 width=4) (actual time=0.110..0.110 rows=1 loops=1)"
+"        Buckets: 1024  Batches: 1  Memory Usage: 9kB"
+"        ->  Index Scan using first_name_indx on players  (cost=0.15..8.17 rows=1 width=4) (actual time=0.103..0.104 rows=1 loops=1)"
+"              Index Cond: ((first_name)::text = 'Yasir'::text)"
+"              Filter: ((last_name)::text = 'Thornton'::text)"
+"Planning Time: 4.750 ms"
+"Execution Time: 0.389 ms"
